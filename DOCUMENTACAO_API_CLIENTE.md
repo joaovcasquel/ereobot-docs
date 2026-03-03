@@ -1,7 +1,7 @@
 # e-Reobot API Pública - Documentação Completa
 
-**Versão:** 2.2.0  
-**Data:** 15 de Novembro de 2025
+**Versão:** 2.3.0
+**Data:** 03 de Março de 2026
 
 ---
 
@@ -14,6 +14,9 @@
    - [CT-e (Conhecimento de Transporte Eletrônico)](#ct-e---conhecimento-de-transporte-eletrônico)
    - [NFS-e (Nota Fiscal de Serviço Eletrônica)](#nfs-e---nota-fiscal-de-serviço-eletrônica)
    - [NFC-e (Nota Fiscal do Consumidor Eletrônica)](#nfc-e---nota-fiscal-do-consumidor-eletrônica)
+   - [Certificado](#certificado)
+   - [Empresa](#empresa)
+   - [Averbação de Exportação](#averbação-de-exportação)
 4. [Modelos de Dados](#-modelos-de-dados)
 5. [Códigos de Status HTTP](#-códigos-de-status-http)
 6. [Exemplos de Integração](#-exemplos-de-integração)
@@ -458,6 +461,335 @@ GET /api/v1/nfce
 
 ---
 
+### Certificado
+
+Gerenciamento do certificado digital A1 associado às empresas do usuário autenticado.
+
+#### Cadastrar / Atualizar Certificado Digital
+
+**Endpoint:**
+```
+POST /api/v1/certificado/{cnpj}
+```
+
+**Parâmetros:**
+- `cnpj` (path) — CNPJ da empresa (14 dígitos)
+
+**Request Body (multipart/form-data):**
+
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `file` | File | Sim | Arquivo do certificado digital A1 (.pfx / .p12) |
+| `senha` | String | Sim | Senha do certificado |
+
+**Response (200 OK):**
+```json
+{
+  "cnpj": "12345678000195",
+  "validoAPartirDe": "2024-01-01T00:00:00.000+00:00",
+  "validoAte": "2026-12-31T23:59:59.000+00:00"
+}
+```
+
+**Códigos de Status:**
+- `200` — Certificado cadastrado com sucesso
+- `400` — CNPJ inválido ou arquivo não suportado
+- `401` — Não autenticado
+- `403` — Empresa não pertence ao usuário autenticado
+
+---
+
+### Empresa
+
+Gerenciamento das empresas vinculadas ao grupo do usuário autenticado.
+
+#### 1. Consultar Empresa
+
+**Endpoint:**
+```
+GET /api/v1/empresa/{cnpj}
+```
+
+**Parâmetros:**
+- `cnpj` (path) — CNPJ da empresa (14 dígitos)
+
+**Response (200 OK):**
+```json
+{
+  "cnpj": "12345678000195",
+  "ativa": true,
+  "nome": "Empresa Exemplo LTDA",
+  "codigoUf": 35,
+  "modulos": {
+    "nfe": true,
+    "cte": false,
+    "nfse": false,
+    "nfce": false
+  },
+  "certificado": {
+    "cnpj": "12345678000195",
+    "validoAPartirDe": "2024-01-01T00:00:00.000+00:00",
+    "validoAte": "2026-12-31T23:59:59.000+00:00"
+  }
+}
+```
+
+**Códigos de Status:**
+- `200` — Empresa encontrada
+- `403` — Empresa não pertence ao usuário autenticado
+- `404` — Empresa não encontrada
+
+---
+
+#### 2. Criar Empresa
+
+**Endpoint:**
+```
+POST /api/v1/empresa
+```
+
+**Request Body (form-data ou JSON):**
+
+| Campo | Tipo | Obrigatório | Descrição | Exemplo |
+|-------|------|-------------|-----------|---------|
+| `cnpj` | String | Sim | CNPJ da empresa (14 dígitos) | `12345678000195` |
+| `nome` | String | Sim | Nome / Razão Social da empresa | `Empresa Exemplo LTDA` |
+| `ativa` | Boolean | Não | Se a empresa está ativa (padrão: false) | `true` |
+| `codigoUf` | Integer | Não | Código UF do IBGE | `35` |
+
+**Response (200 OK):** `EmpresaResponse` (mesmo formato do GET).
+
+**Códigos de Status:**
+- `200` — Empresa criada
+- `400` — Dados inválidos
+- `401` — Não autenticado
+
+---
+
+#### 3. Atualizar Empresa
+
+**Endpoint:**
+```
+PUT /api/v1/empresa/{cnpj}
+```
+
+**Parâmetros:**
+- `cnpj` (path) — CNPJ da empresa (14 dígitos)
+
+**Request Body (form-data ou JSON):**
+
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `nome` | String | Sim | Nome / Razão Social da empresa |
+| `ativa` | Boolean | Não | Se a empresa está ativa |
+| `codigoUf` | Integer | Não | Código UF do IBGE |
+
+**Response (200 OK):** `EmpresaResponse` (mesmo formato do GET).
+
+**Códigos de Status:**
+- `200` — Empresa atualizada
+- `403` — Empresa não pertence ao usuário autenticado
+- `404` — Empresa não encontrada
+
+---
+
+### Averbação de Exportação
+
+Consulta e download de Eventos de Averbação de Exportação vinculados a NF-es.
+
+#### 1. Consultar Averbação por Chave de Acesso
+
+**Endpoint:**
+```
+GET /api/v1/averbacao/{chaveAcesso}
+```
+
+**Parâmetros:**
+- `chaveAcesso` (path) — Chave de acesso da NF-e (44 dígitos)
+
+**Response (200 OK):**
+```json
+{
+  "chaveAcesso": "35200812345678000195550010000000011234567890",
+  "tipoEvento": "110130",
+  "cnpjEmitente": "12345678000195",
+  "cnpjDestinatario": null,
+  "xml": "<procEventoNFe>...</procEventoNFe>"
+}
+```
+
+**Códigos de Status:**
+- `200` — Evento encontrado
+- `400` — Chave de acesso inválida (não tem 44 dígitos)
+- `401` — Token ausente ou inválido
+- `404` — Evento não encontrado
+
+---
+
+#### 2. Listar Averbações com Filtros
+
+**Endpoint:**
+```
+GET /api/v1/averbacao
+```
+
+**Parâmetros de Query:**
+
+| Parâmetro | Tipo | Obrigatório | Descrição | Exemplo |
+|-----------|------|-------------|-----------|---------|
+| `cnpjEmpresa` | String | Sim | CNPJ da empresa (14 dígitos) | `12345678000195` |
+| `dataHoraEventoDe` | String | Não | Data do evento a partir de (YYYY-MM-DD) | `2025-01-01` |
+| `dataHoraEventoAte` | String | Não | Data do evento até (YYYY-MM-DD) | `2025-12-31` |
+| `page` | Integer | Não | Número da página, inicia em 0 (padrão: 0) | `0` |
+| `size` | Integer | Não | Itens por página (padrão: 20, máx: 100) | `20` |
+
+**Response (200 OK):**
+```json
+{
+  "content": [
+    {
+      "chaveAcesso": "35200812345678000195550010000000011234567890",
+      "tipoEvento": "110130",
+      "cnpjEmitente": "12345678000195",
+      "cnpjDestinatario": null,
+      "xml": "<procEventoNFe>...</procEventoNFe>"
+    }
+  ],
+  "totalElements": 100,
+  "totalPages": 5,
+  "number": 0,
+  "size": 20
+}
+```
+
+**Códigos de Status:**
+- `200` — Consulta realizada com sucesso
+- `400` — Parâmetros inválidos ou CNPJ sem permissão
+- `401` — Token ausente ou inválido
+
+---
+
+#### 3. Criar Consulta Assíncrona de Averbações
+
+**Endpoint:**
+```
+POST /api/v1/averbacao/consultar-async
+```
+
+**Request Body:**
+```json
+{
+  "cnpjCpfEmitente": "12345678000195",
+  "dataEmissaoDe": "2025-01-01",
+  "dataEmissaoAte": "2025-12-31"
+}
+```
+
+**Response (202 Accepted):**
+```json
+{
+  "idProtocolo": "AVERB-550e8400-e29b-41d4-a716-446655440000",
+  "status": "AGUARDANDO",
+  "mensagem": "Consulta criada com sucesso. Use o idProtocolo para acompanhar o status."
+}
+```
+
+**Códigos de Status:**
+- `202` — Consulta criada e enfileirada
+- `400` — Parâmetros inválidos
+- `401` — Não autenticado
+
+---
+
+#### 4. Consultar Status da Consulta Assíncrona
+
+**Endpoint:**
+```
+GET /api/v1/averbacao/status/{idProtocolo}
+```
+
+**Parâmetros:**
+- `idProtocolo` (path) — ID retornado pelo endpoint de consulta assíncrona
+
+**Response (200 OK):**
+```json
+{
+  "idProtocolo": "AVERB-550e8400-e29b-41d4-a716-446655440000",
+  "status": "CONCLUIDO",
+  "totalDocumentos": 42,
+  "mensagem": "Processamento concluído com sucesso"
+}
+```
+
+**Valores possíveis de `status`:** `AGUARDANDO`, `PROCESSANDO`, `CONCLUIDO`, `ERRO`
+
+**Códigos de Status:**
+- `200` — Status retornado
+- `404` — Protocolo não encontrado
+
+---
+
+#### 5. Download em Lote de XMLs de Averbação
+
+**Endpoint:**
+```
+POST /api/v1/averbacao/download
+```
+
+**Request Body:**
+```json
+[
+  "35200812345678000195550010000000011234567890",
+  "35200812345678000195550010000000021234567891"
+]
+```
+
+**Response (200 OK):**
+
+Arquivo `averbacoes.zip` (`Content-Type: application/octet-stream`) contendo um XML por chave de acesso.
+
+**Códigos de Status:**
+- `200` — Arquivo ZIP gerado
+- `400` — Lista de chaves inválida
+- `401` — Não autenticado
+- `404` — Nenhum documento encontrado para as chaves informadas
+
+---
+
+#### 6. Registrar Webhook de Averbação
+
+**Endpoint:**
+```
+POST /api/v1/averbacao/webhook
+```
+
+**Request Body:**
+```json
+{
+  "cnpjEmpresa": "12345678000195",
+  "url": "https://seu-sistema.com.br/webhook/averbacao"
+}
+```
+
+**Response (200 OK):** Webhook registrado com sucesso.
+
+**Payload enviado ao webhook:**
+```json
+{
+  "evento": "AVERBACAO_DETECTADA",
+  "cnpjEmpresa": "12345678000195",
+  "chaveAcesso": "35200812345678000195550010000000011234567890",
+  "dataHoraEvento": "2025-06-07T04:52:16"
+}
+```
+
+**Códigos de Status:**
+- `200` — Webhook registrado
+- `400` — CNPJ ou URL ausente
+- `403` — Usuário sem permissão para o CNPJ informado
+
+---
+
 ## 📊 Modelos de Dados
 
 ### NFeCTeDTO
@@ -514,6 +846,16 @@ GET /api/v1/nfce
   "xml": "string"
 }
 ```
+
+### NFeEventoDTO (Averbação)
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `chaveAcesso` | String | Chave de acesso da NF-e (44 dígitos) |
+| `tipoEvento` | String | Código do tipo de evento (ex: `110130`) |
+| `cnpjEmitente` | String | CNPJ do emitente da NF-e |
+| `cnpjDestinatario` | String | CNPJ do destinatário (pode ser null) |
+| `xml` | String | XML completo do evento de averbação |
 
 ### Página de Resultados
 
@@ -1559,6 +1901,10 @@ Ao reportar um problema, inclua:
 
 ### Changelog
 
+**Versão 2.3.0** (03 de Março de 2026) - Averbação de Exportação
+- ✅ **Averbação de Exportação**: suporte completo a consulta por chave, listagem paginada, consulta assíncrona, download em lote e webhook
+- ✅ **Documentação unificada**: todos os endpoints em um único Swagger
+
 **Versão 2.2.0** (15 de Novembro de 2025) - Lançamento Inicial
 - ✅ **API RESTful completa** para consulta de documentos fiscais eletrônicos
 - ✅ **Autenticação JWT** com segurança baseada em tokens Bearer
@@ -1600,6 +1946,6 @@ O uso desta API está sujeito aos termos de contrato estabelecidos com a e-Reobo
 
 ---
 
-**Última atualização:** 15 de Novembro de 2025  
-**Versão da Documentação:** 2.2.0  
-**e-Reobot - Automação de Documentos Fiscais** ©️ 2025
+**Última atualização:** 03 de Março de 2026
+**Versão da Documentação:** 2.3.0
+**e-Reobot - Automação de Documentos Fiscais** ©️ 2026
