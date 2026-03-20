@@ -1,7 +1,7 @@
 # e-Reobot API Pública - Documentação Completa
 
-**Versão:** 2.3.0
-**Data:** 03 de Março de 2026
+**Versão:** 2.4.0
+**Data:** 19 de Março de 2026
 
 ---
 
@@ -13,10 +13,14 @@
    - [NF-e (Nota Fiscal Eletrônica)](#nf-e---nota-fiscal-eletrônica)
    - [CT-e (Conhecimento de Transporte Eletrônico)](#ct-e---conhecimento-de-transporte-eletrônico)
    - [NFS-e (Nota Fiscal de Serviço Eletrônica)](#nfs-e---nota-fiscal-de-serviço-eletrônica)
+   - [NFS-e Nacional (Padrão Nacional)](#nfs-e-nacional---padrão-nacional)
+   - [Municípios Habilitados (NFS-e)](#2-listar-municípios-habilitados)
    - [NFC-e (Nota Fiscal do Consumidor Eletrônica)](#nfc-e---nota-fiscal-do-consumidor-eletrônica)
    - [Certificado](#certificado)
    - [Empresa](#empresa)
    - [Averbação de Exportação](#averbação-de-exportação)
+   - [Extrato de Captura de Averbações por Empresa](#7-extrato-de-captura-de-averbações-por-empresa)
+   - [Assinatura de Averbação](#8-listar-assinaturas-de-averbação)
 4. [Modelos de Dados](#-modelos-de-dados)
 5. [Códigos de Status HTTP](#-códigos-de-status-http)
 6. [Exemplos de Integração](#-exemplos-de-integração)
@@ -164,13 +168,11 @@ GET /api/v1/nfe
 | `dataEmissaoAte` | String | Não | Data final (YYYY-MM-DD) | 2024-12-31 |
 | `numNotaDe` | Integer | Não | Número inicial da nota | 100 |
 | `numNotaAte` | Integer | Não | Número final da nota | 200 |
-| `page` | Integer | Não | Número da página (inicia em 0) | 0 |
-| `size` | Integer | Não | Tamanho da página (padrão: 20) | 50 |
-| `sort` | String | Não | Campo e direção de ordenação | dataEmissao,desc |
+| `pageNum` | Integer | Não | Número da página (inicia em 0) | 0 |
 
 **Exemplo de Requisição:**
 ```
-GET /api/v1/nfe?cnpjCpfDestinatario=12345678000195&dataEmissaoDe=2024-01-01&dataEmissaoAte=2024-12-31&page=0&size=20
+GET /api/v1/nfe?cnpjCpfDestinatario=12345678000195&dataEmissaoDe=2024-01-01&dataEmissaoAte=2024-12-31&pageNum=0
 ```
 
 **Response (200 OK):**
@@ -402,7 +404,7 @@ GET /api/v1/cte
 
 ### NFS-e - Nota Fiscal de Serviço Eletrônica
 
-#### Listar NFS-es com Filtros
+#### 1. Listar NFS-es com Filtros
 
 **Endpoint:**
 ```
@@ -413,18 +415,83 @@ GET /api/v1/nfse
 
 | Parâmetro | Tipo | Obrigatório | Descrição | Exemplo |
 |-----------|------|-------------|-----------|---------|
-| `tipoNota` | String | Não | TOMADA ou PRESTADA | TOMADA |
-| `codigoMun` | Integer | Não | Código do município | 3518800 |
-| `cnpjCpfPrestador` | String | Não | CNPJ/CPF do prestador | 12345678000195 |
-| `cnpjCpfTomador` | String | Não | CNPJ/CPF do tomador | 98765432000110 |
-| `dataEmissaoDe` | String | Não | Data inicial | 2024-01-01 |
-| `dataEmissaoAte` | String | Não | Data final | 2024-12-31 |
-| `numNotaDe` | Integer | Não | Número inicial | 100 |
-| `numNotaAte` | Integer | Não | Número final | 200 |
-| `page` | Integer | Não | Número da página | 0 |
-| `size` | Integer | Não | Tamanho da página | 20 |
+| `tipoNota` | String | Sim | Tipo da nota: `tomada` ou `prestada` | `tomada` |
+| `cnpjCpfTomadorPrestador` | String | Sim | CNPJ/CPF do tomador (quando `tomada`) ou prestador (quando `prestada`) | `12345678000195` |
+| `codigoMun` | Integer | Sim | Código IBGE do município | `3550308` |
+| `dataEmissaoDe` | String | Sim | Data inicial (YYYY-MM-DD) | `2025-12-01` |
+| `dataEmissaoAte` | String | Sim | Data final (YYYY-MM-DD) | `2025-12-31` |
+| `numNotaDe` | Integer | Não | Número inicial da nota | `100` |
+| `numNotaAte` | Integer | Não | Número final da nota | `200` |
+| `pageNum` | Integer | Não | Número da página (inicia em 0) | `0` |
 
-**Response:** Lista paginada de NFS-es
+> **Regra:** intervalo máximo entre `dataEmissaoDe` e `dataEmissaoAte` é de 31 dias.
+
+**Response (200 OK):** Lista paginada de `NFSeDTO`.
+
+**Códigos de Status:**
+- `200` — Consulta realizada com sucesso
+- `400` — Parâmetros inválidos
+- `403` — Sem permissão para os CNPJs/CPFs informados
+
+---
+
+#### 2. Listar Municípios Habilitados
+
+**Endpoint:**
+```
+GET /api/v1/nfse/nfse/municipios-habilitados
+```
+
+**Response (200 OK):**
+```json
+{
+  "municipiosHabilitados": [
+    {
+      "codigoMunicipio": 3550308,
+      "nome": "São Paulo",
+      "uf": "SP"
+    }
+  ]
+}
+```
+
+**Códigos de Status:**
+- `200` — Consulta realizada com sucesso
+- `401` — Não autenticado
+- `500` — Erro interno
+
+---
+
+### NFS-e Nacional - Padrão Nacional
+
+#### 1. Listar NFS-e Nacional com Filtros
+
+**Endpoint:**
+```
+GET /api/v1/nfse-nacional
+```
+
+**Parâmetros de Query:**
+
+| Parâmetro | Tipo | Obrigatório | Descrição | Exemplo |
+|-----------|------|-------------|-----------|---------|
+| `cnpjCpfTomador` | String | Não* | CNPJ/CPF do tomador | `35150145000153` |
+| `cnpjCpfPrestador` | String | Não* | CNPJ/CPF do prestador | `35150145000153` |
+| `dataEmissaoDe` | String | Sim | Data inicial (YYYY-MM-DD) | `2025-10-01` |
+| `dataEmissaoAte` | String | Sim | Data final (YYYY-MM-DD) | `2025-10-31` |
+| `chaveAcesso` | String | Não | Filtra por chave de acesso | `35200812345678000195550010000000011234567890` |
+| `pageNum` | Integer | Não | Número da página (inicia em 0) | `0` |
+
+\* É obrigatório informar ao menos um entre `cnpjCpfTomador` e `cnpjCpfPrestador`.
+
+> **Regra:** intervalo máximo entre `dataEmissaoDe` e `dataEmissaoAte` é de 31 dias.
+
+**Response (200 OK):** Lista paginada de `NFSeNacionalDTO`.
+
+**Códigos de Status:**
+- `200` — Consulta realizada com sucesso
+- `400` — Parâmetros inválidos
+- `403` — Sem permissão para os CNPJs/CPFs informados
 
 ---
 
@@ -507,11 +574,11 @@ Gerenciamento das empresas vinculadas ao grupo do usuário autenticado.
 
 **Endpoint:**
 ```
-GET /api/v1/empresa/{cnpj}
+GET /api/v1/empresa/{cnpjCpf}
 ```
 
 **Parâmetros:**
-- `cnpj` (path) — CNPJ da empresa (14 dígitos)
+- `cnpjCpf` (path) — CNPJ/CPF da empresa
 
 **Response (200 OK):**
 ```json
@@ -552,10 +619,11 @@ POST /api/v1/empresa
 
 | Campo | Tipo | Obrigatório | Descrição | Exemplo |
 |-------|------|-------------|-----------|---------|
-| `cnpj` | String | Sim | CNPJ da empresa (14 dígitos) | `12345678000195` |
+| `cnpjCpf` | String | Sim | CNPJ/CPF da empresa | `12345678000195` |
 | `nome` | String | Sim | Nome / Razão Social da empresa | `Empresa Exemplo LTDA` |
 | `ativa` | Boolean | Não | Se a empresa está ativa (padrão: false) | `true` |
 | `codigoUf` | Integer | Não | Código UF do IBGE | `35` |
+| `inscricaoEstadual` | String | Não | Campo usado somente quando o cadastro for CPF | `123456789` |
 
 **Response (200 OK):** `EmpresaResponse` (mesmo formato do GET).
 
@@ -570,11 +638,11 @@ POST /api/v1/empresa
 
 **Endpoint:**
 ```
-PUT /api/v1/empresa/{cnpj}
+PATCH /api/v1/empresa/{cnpjCpf}
 ```
 
 **Parâmetros:**
-- `cnpj` (path) — CNPJ da empresa (14 dígitos)
+- `cnpjCpf` (path) — CNPJ/CPF da empresa
 
 **Request Body (form-data ou JSON):**
 
@@ -612,8 +680,8 @@ GET /api/v1/averbacao/{chaveAcesso}
 {
   "chaveAcesso": "35200812345678000195550010000000011234567890",
   "tipoEvento": "110130",
-  "cnpjEmitente": "12345678000195",
-  "cnpjDestinatario": null,
+  "cnpjCpfEmitente": "12345678000195",
+  "cnpjCpfDestinatario": null,
   "xml": "<procEventoNFe>...</procEventoNFe>"
 }
 ```
@@ -640,8 +708,7 @@ GET /api/v1/averbacao
 | `cnpjEmpresa` | String | Sim | CNPJ da empresa (14 dígitos) | `12345678000195` |
 | `dataHoraEventoDe` | String | Não | Data do evento a partir de (YYYY-MM-DD) | `2025-01-01` |
 | `dataHoraEventoAte` | String | Não | Data do evento até (YYYY-MM-DD) | `2025-12-31` |
-| `page` | Integer | Não | Número da página, inicia em 0 (padrão: 0) | `0` |
-| `size` | Integer | Não | Itens por página (padrão: 20, máx: 100) | `20` |
+| `pageNum` | Integer | Não | Número da página, inicia em 0 | `0` |
 
 **Response (200 OK):**
 ```json
@@ -650,8 +717,8 @@ GET /api/v1/averbacao
     {
       "chaveAcesso": "35200812345678000195550010000000011234567890",
       "tipoEvento": "110130",
-      "cnpjEmitente": "12345678000195",
-      "cnpjDestinatario": null,
+      "cnpjCpfEmitente": "12345678000195",
+      "cnpjCpfDestinatario": null,
       "xml": "<procEventoNFe>...</procEventoNFe>"
     }
   ],
@@ -679,18 +746,25 @@ POST /api/v1/averbacao/consultar-async
 **Request Body:**
 ```json
 {
-  "cnpjCpfEmitente": "12345678000195",
-  "dataEmissaoDe": "2025-01-01",
-  "dataEmissaoAte": "2025-12-31"
+  "cnpjEmpresa": "12345678000195",
+  "chavesDeAcesso": [
+    "35200812345678000195550010000000011234567890",
+    "35200812345678000195550010000000021234567891"
+  ]
 }
 ```
 
 **Response (202 Accepted):**
 ```json
 {
-  "idProtocolo": "AVERB-550e8400-e29b-41d4-a716-446655440000",
-  "status": "AGUARDANDO",
-  "mensagem": "Consulta criada com sucesso. Use o idProtocolo para acompanhar o status."
+  "idExecucao": "AVERB-550e8400-e29b-41d4-a716-446655440000",
+  "status": "PENDING",
+  "mensagem": "Consulta criada com sucesso. Processamento iniciado.",
+  "chavesDeAcesso": [
+    "35200812345678000195550010000000011234567890",
+    "35200812345678000195550010000000021234567891"
+  ],
+  "criadoEm": "2026-03-19T10:30:00.000Z"
 }
 ```
 
@@ -714,14 +788,19 @@ GET /api/v1/averbacao/status/{idProtocolo}
 **Response (200 OK):**
 ```json
 {
-  "idProtocolo": "AVERB-550e8400-e29b-41d4-a716-446655440000",
-  "status": "CONCLUIDO",
-  "totalDocumentos": 42,
-  "mensagem": "Processamento concluído com sucesso"
+  "idExecucao": "AVERB-550e8400-e29b-41d4-a716-446655440000",
+  "cnpjEmpresa": "12345678000195",
+  "status": "COMPLETED",
+  "progressoAtual": 2,
+  "totalChaves": 2,
+  "tentativas": 1,
+  "mensagemErro": null,
+  "criadoEm": "2026-03-19T10:30:00.000Z",
+  "atualizadoEm": "2026-03-19T10:35:00.000Z"
 }
 ```
 
-**Valores possíveis de `status`:** `AGUARDANDO`, `PROCESSANDO`, `CONCLUIDO`, `ERRO`
+**Valores possíveis de `status`:** `PENDING`, `PROCESSING`, `RETRYING`, `FAILED`, `COMPLETED`
 
 **Códigos de Status:**
 - `200` — Status retornado
@@ -790,6 +869,160 @@ POST /api/v1/averbacao/webhook
 
 ---
 
+#### 7. Extrato de Captura de Averbações por Empresa
+
+**Endpoint:**
+```
+GET /api/v1/averbacao/extrato-captura-averbacao/{mes}/{ano}
+```
+
+**Parâmetros:**
+- `mes` (path) — Mês de referência (1 a 12)
+- `ano` (path) — Ano de referência
+
+**Response (200 OK):**
+```json
+[
+  {
+    "cnpjEmpresa": "12345678000195",
+    "nomeEmpresa": "Empresa Exemplo LTDA",
+    "qtdAverbadas": 152,
+    "qtdNaoAverbadas": 8
+  }
+]
+```
+
+**Códigos de Status:**
+- `200` — Extrato retornado com sucesso
+- `401` — Não autenticado
+- `403` — Sem permissão de acesso
+- `500` — Erro interno
+
+---
+
+#### 8. Listar Assinaturas de Averbação
+
+**Endpoint:**
+```
+GET /api/v1/averbacao/assinatura
+```
+
+**Parâmetros de Query:**
+
+| Parâmetro | Tipo | Obrigatório | Descrição | Exemplo |
+|-----------|------|-------------|-----------|---------|
+| `idEmpresa` | String | Sim | CNPJ/CPF da empresa | `12345678000195` |
+| `ano` | Integer | Sim | Ano da assinatura | `2026` |
+| `mes` | Integer | Sim | Mês da assinatura (1 a 12) | `3` |
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": "67f4e1ddc49f4429c9aa10ff",
+    "ano": 2026,
+    "mes": 3,
+    "creditos": 5000,
+    "valor": 199.90,
+    "idEmpresa": "12345678000195",
+    "createdAt": "2026-03-15T10:30:00"
+  }
+]
+```
+
+**Códigos de Status:**
+- `200` — Assinaturas listadas com sucesso
+- `403` — Sem permissão para a empresa informada
+
+---
+
+#### 9. Criar Assinatura de Averbação
+
+**Endpoint:**
+```
+POST /api/v1/averbacao/assinatura
+```
+
+**Request Body:**
+```json
+{
+  "ano": 2026,
+  "mes": 3,
+  "creditos": 5000,
+  "valor": 199.90,
+  "idEmpresa": "12345678000195"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "67f4e1ddc49f4429c9aa10ff",
+  "ano": 2026,
+  "mes": 3,
+  "creditos": 5000,
+  "valor": 199.90,
+  "idEmpresa": "12345678000195",
+  "createdAt": "2026-03-19T11:05:00"
+}
+```
+
+**Códigos de Status:**
+- `201` — Assinatura criada com sucesso
+- `400` — Erro de validação nos campos
+- `403` — Sem permissão para a empresa informada
+
+---
+
+#### 10. Atualizar Assinatura de Averbação
+
+**Endpoint:**
+```
+PATCH /api/v1/averbacao/assinatura/{id}
+```
+
+**Parâmetros:**
+- `id` (path) — ID da assinatura
+
+**Request Body (campos opcionais):**
+```json
+{
+  "ano": 2026,
+  "mes": 4,
+  "creditos": 6000,
+  "valor": 229.90,
+  "idEmpresa": "12345678000195"
+}
+```
+
+**Response (200 OK):** Retorna a assinatura atualizada.
+
+**Códigos de Status:**
+- `200` — Assinatura atualizada com sucesso
+- `403` — Sem permissão para a assinatura
+- `404` — Assinatura não encontrada
+
+---
+
+#### 11. Deletar Assinatura de Averbação
+
+**Endpoint:**
+```
+DELETE /api/v1/averbacao/assinatura/{id}
+```
+
+**Parâmetros:**
+- `id` (path) — ID da assinatura
+
+**Response (204 No Content):** Assinatura removida com sucesso.
+
+**Códigos de Status:**
+- `204` — Assinatura removida
+- `403` — Sem permissão para a assinatura
+- `404` — Assinatura não encontrada
+
+---
+
 ## 📊 Modelos de Dados
 
 ### NFeCTeDTO
@@ -853,9 +1086,63 @@ POST /api/v1/averbacao/webhook
 |-------|------|-----------|
 | `chaveAcesso` | String | Chave de acesso da NF-e (44 dígitos) |
 | `tipoEvento` | String | Código do tipo de evento (ex: `110130`) |
-| `cnpjEmitente` | String | CNPJ do emitente da NF-e |
-| `cnpjDestinatario` | String | CNPJ do destinatário (pode ser null) |
+| `cnpjCpfEmitente` | String | CNPJ/CPF do emitente da NF-e |
+| `cnpjCpfDestinatario` | String | CNPJ/CPF do destinatário (pode ser null) |
 | `xml` | String | XML completo do evento de averbação |
+
+### NFSeNacionalDTO
+
+```json
+{
+  "chaveAcesso": "string",
+  "numero": 12345,
+  "situacao": "AUTORIZADA",
+  "cnpjCpfEmitente": "12345678000195",
+  "nomeEmitente": "Prestador Exemplo LTDA",
+  "cnpjCpfTomador": "98765432000110",
+  "dataEmissao": "2026-03-01T10:30:00",
+  "municipio": "São Paulo",
+  "valorTotal": 1500.75,
+  "xmlGzip": "H4sIAAAAA..."
+}
+```
+
+### MunicipiosHabilitadosResponse
+
+```json
+{
+  "municipiosHabilitados": [
+    {
+      "codigoMunicipio": 3550308,
+      "nome": "São Paulo",
+      "uf": "SP"
+    }
+  ]
+}
+```
+
+### AssinaturaAverbacao
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | String | Identificador da assinatura |
+| `ano` | Integer | Ano da assinatura (mínimo: 2026) |
+| `mes` | Integer | Mês da assinatura (1 a 12) |
+| `creditos` | Integer | Quantidade de créditos (mínimo: 1) |
+| `valor` | Decimal | Valor da assinatura (mínimo: 0.01) |
+| `idEmpresa` | String | CNPJ/CPF da empresa |
+| `createdAt` | DateTime | Data de criação |
+
+### AverbacaoEmpresasCountDTO
+
+```json
+{
+  "cnpjEmpresa": "12345678000195",
+  "nomeEmpresa": "Empresa Exemplo LTDA",
+  "qtdAverbadas": 152,
+  "qtdNaoAverbadas": 8
+}
+```
 
 ### Página de Resultados
 
@@ -882,7 +1169,9 @@ POST /api/v1/averbacao/webhook
 | Código | Significado | Descrição |
 |--------|-------------|-----------|
 | 200 | OK | Requisição bem-sucedida |
+| 201 | Created | Recurso criado com sucesso |
 | 202 | Accepted | Job assíncrono criado com sucesso |
+| 204 | No Content | Recurso removido com sucesso |
 | 400 | Bad Request | Requisição inválida ou parâmetros incorretos |
 | 401 | Unauthorized | Token ausente, inválido ou expirado |
 | 403 | Forbidden | Sem permissão para acessar o recurso solicitado |
@@ -984,8 +1273,7 @@ async function listarNFes(filtros) {
         cnpjCpfDestinatario: filtros.cnpj,
         dataEmissaoDe: filtros.dataInicio,
         dataEmissaoAte: filtros.dataFim,
-        page: filtros.pagina || 0,
-        size: filtros.tamanho || 20
+        pageNum: filtros.pagina || 0
       }
     });
     
@@ -1074,8 +1362,7 @@ async function consultaAssincrona(cnpj, chaves) {
     cnpj: '12345678000195',
     dataInicio: '2024-01-01',
     dataFim: '2024-12-31',
-    pagina: 0,
-    tamanho: 20
+    pagina: 0
   });
   console.log('Total de NF-es:', lista.totalElements);
 })();
@@ -1130,12 +1417,10 @@ class EReobotAPI:
                     cnpj_emitente: Optional[str] = None,
                     data_inicio: Optional[str] = None,
                     data_fim: Optional[str] = None,
-                    pagina: int = 0,
-                    tamanho: int = 20) -> Dict:
+                    pagina: int = 0) -> Dict:
         """Lista NF-es com filtros"""
         params = {
-            'page': pagina,
-            'size': tamanho
+            'pageNum': pagina
         }
         
         if cnpj_destinatario:
@@ -1251,8 +1536,7 @@ if __name__ == '__main__':
         cnpj_destinatario='12345678000195',
         data_inicio='2024-01-01',
         data_fim='2024-12-31',
-        pagina=0,
-        tamanho=20
+        pagina=0
     )
     print(f'Total de NF-es: {resultado["totalElements"]}')
     
@@ -1335,11 +1619,10 @@ public class EReobotApiClient {
     public Map<String, Object> listarNFes(String cnpjDestinatario, 
                                           String dataInicio, 
                                           String dataFim,
-                                          int pagina, 
-                                          int tamanho) {
+                                          int pagina) {
         String url = String.format(
-            "%s/api/v1/nfe?cnpjCpfDestinatario=%s&dataEmissaoDe=%s&dataEmissaoAte=%s&page=%d&size=%d",
-            API_BASE_URL, cnpjDestinatario, dataInicio, dataFim, pagina, tamanho
+            "%s/api/v1/nfe?cnpjCpfDestinatario=%s&dataEmissaoDe=%s&dataEmissaoAte=%s&pageNum=%d",
+            API_BASE_URL, cnpjDestinatario, dataInicio, dataFim, pagina
         );
         
         HttpHeaders headers = new HttpHeaders();
@@ -1438,8 +1721,7 @@ public class EReobotApiClient {
             "12345678000195", 
             "2024-01-01", 
             "2024-12-31", 
-            0, 
-            20
+            0
         );
         System.out.println("Total: " + lista.get("totalElements"));
     }
@@ -1523,15 +1805,13 @@ public class EReobotApiClient
         string cnpjDestinatario,
         string dataInicio,
         string dataFim,
-        int pagina = 0,
-        int tamanho = 20)
+        int pagina = 0)
     {
         var url = $"{API_BASE_URL}/api/v1/nfe?" +
                   $"cnpjCpfDestinatario={cnpjDestinatario}" +
                   $"&dataEmissaoDe={dataInicio}" +
                   $"&dataEmissaoAte={dataFim}" +
-                  $"&page={pagina}" +
-                  $"&size={tamanho}";
+                  $"&pageNum={pagina}";
 
         var response = await _httpClient.GetAsync(url);
         response.EnsureSuccessStatusCode();
@@ -1617,8 +1897,7 @@ public class EReobotApiClient
             "12345678000195",
             "2024-01-01",
             "2024-12-31",
-            0,
-            20
+            0
         );
         Console.WriteLine($"Total: {lista["totalElements"]}");
     }
@@ -1679,8 +1958,7 @@ async function buscarTodasNFes(filtros) {
   while (temMaisPaginas) {
     const resultado = await api.listarNFes({
       ...filtros,
-      pagina: pagina,
-      tamanho: 100 // Máximo recomendado
+      pagina: pagina
     });
     
     todasNFes = todasNFes.concat(resultado.content);
@@ -1901,6 +2179,12 @@ Ao reportar um problema, inclua:
 
 ### Changelog
 
+**Versão 2.4.0** (19 de Março de 2026) - Sincronização com Swagger
+- ✅ **Novos endpoints documentados**: NFS-e Nacional, Municípios Habilitados (NFS-e), Extrato de Captura e Assinaturas de Averbação (GET/POST/PATCH/DELETE)
+- ✅ **Regra atualizada de Empresa**: atualização via `PATCH /api/v1/empresa/{cnpjCpf}`
+- ✅ **Paginação atualizada**: uso de `pageNum` na documentação e nos snippets de integração
+- ✅ **Modelos ampliados**: inclusão de `NFSeNacionalDTO`, `MunicipiosHabilitadosResponse`, `AssinaturaAverbacao` e `AverbacaoEmpresasCountDTO`
+
 **Versão 2.3.0** (03 de Março de 2026) - Averbação de Exportação
 - ✅ **Averbação de Exportação**: suporte completo a consulta por chave, listagem paginada, consulta assíncrona, download em lote e webhook
 - ✅ **Documentação unificada**: todos os endpoints em um único Swagger
@@ -1946,6 +2230,6 @@ O uso desta API está sujeito aos termos de contrato estabelecidos com a e-Reobo
 
 ---
 
-**Última atualização:** 03 de Março de 2026
-**Versão da Documentação:** 2.3.0
+**Última atualização:** 19 de Março de 2026
+**Versão da Documentação:** 2.4.0
 **e-Reobot - Automação de Documentos Fiscais** ©️ 2026
